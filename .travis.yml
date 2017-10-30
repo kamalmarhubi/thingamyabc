@@ -1,0 +1,47 @@
+language: bash
+os:
+  - linux
+  - osx
+
+# Test with final patch release in last three minor version series.
+env:
+  - BAZEL_VERSION=0.7.0
+  - BAZEL_VERSION=0.6.1
+  - BAZEL_VERSION=0.5.4
+
+# Install 0.1.5 as the "main" version. This was the first version with the
+# tools/bazel detection wrapper script.
+before_install:
+  - |
+    case "$TRAVIS_OS_NAME" in
+      osx)
+        OS=darwin
+        ;;
+      linux)
+        OS=linux
+        ;;
+    esac
+  - url="https://github.com/bazelbuild/bazel/releases/download/0.1.5/bazel-0.1.5-installer-$OS-x86_64.sh"
+  # Download installer to /tmp.
+  - cd /tmp
+  - wget -O install.sh "$url"
+  - chmod +x install.sh
+  - trap 'rm -f install.sh' EXIT
+  - ./install.sh --user
+  # Output version for build log.
+  - bazel version
+  # Switch back to repo dir.
+  - cd "$TRAVIS_BUILD_DIR"
+
+install:
+  - echo "$BAZEL_VERSION" > tools/bazel-version
+
+script:
+  # Ensure we get lots of output!
+  - export BAZEL_VERSION_TRACE=1
+  - version="$(bazel version)"
+  - echo "$version"
+  # Use literal multiline string because [ would start a YAML array, and the
+  # command string contains both kinds of quotes.
+  - |
+    [[ "$(echo "$version" | grep 'Build label')" =~ "$BAZEL_VERSION" ]]
